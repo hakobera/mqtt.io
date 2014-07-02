@@ -1,0 +1,30 @@
+{
+  "name": "mqtt.io",
+  "version": "0.0.1",
+  "description": "MQTT over Socket.IO",
+  "main": "index.js",
+  "scripts": {
+    "test": "npm test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/hakobera/mqtt.io.git"
+  },
+  "keywords": [
+    "mqtt",
+    "socket.io"
+  ],
+  "author": "Kazuyuki Honda <hakobera@gmail.com>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/hakobera/mqtt.io/issues"
+  },
+  "homepage": "https://github.com/hakobera/mqtt.io",
+  "dependencies": {
+    "mosca": "git://github.com/hakobera/mosca.git#socket.io",
+    "mqtt": "~0.3.10",
+    "redis": "^0.10.3",
+    "socket.io": "~1.0.6",
+    "through": "~2.3.4"
+  }
+}

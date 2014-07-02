@@ -1,0 +1,36 @@
+<!doctype html>
+<html>
+<head>
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/js/mqttws31.js"></script>
+  <script>
+  var client = new Paho.MQTT.Client('localhost', 8080, "clientId" + new Date().getTime());
+  client.startTrace();
+  client.onConnectionLost = onConnectionLost;
+  client.onMessageArrived = onMessageArrived;
+  client.connect({ onSuccess: onConnect });
+
+  function onConnect() {
+    // Once a connection has been made, make a subscription and send a message.
+    console.log("onConnect");
+    client.subscribe("#");
+    message = new Paho.MQTT.Message("Hello");
+    message.destinationName = "/World";
+    client.send(message);
+  };
+
+  function onConnectionLost(responseObject) {
+    if (responseObject.errorCode !== 0)
+      console.log("onConnectionLost:"+responseObject.errorMessage);
+  };
+
+  function onMessageArrived(message) {
+    console.log(message);
+    console.log("onMessageArrived:"+message.payloadString);
+    //client.disconnect();
+  };
+  </script>
+</head>
+<body>
+</body>
+</html>

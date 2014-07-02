@@ -966,17 +966,19 @@ Paho.MQTT = (function (global) {
     // When the socket is open, this client will send the CONNECT WireMessage using the saved parameters.
     if (this.connectOptions.useSSL) {
         var uriParts = wsurl.split(":");
-        uriParts[0] = "wss";
+        uriParts[0] = "https";
         wsurl = uriParts.join(":");
     }
     this.connected = false;
-    this.socket = new WebSocket(wsurl, ["mqtt","mqttv3.1"]);
-    this.socket.binaryType = 'arraybuffer';
-
-    this.socket.onopen = scope(this._on_socket_open, this);
-    this.socket.onmessage = scope(this._on_socket_message, this);
-    this.socket.onerror = scope(this._on_socket_error, this);
-    this.socket.onclose = scope(this._on_socket_close, this);
+    var socket = this.socket = io(wsurl);
+    var that = this;
+    //this.socket.binaryType = 'arraybuffer';
+    this.socket.on('connect', function () {
+      scope(that._on_socket_open, that)();
+      socket.on('disconnect', scope(that._on_socket_close, that));
+      socket.on('message', scope(that._on_socket_message, that));
+    });
+    this.socket.on('error', scope(this._on_socket_error, this));
 
     this.sendPinger = new Pinger(this, window, this.connectOptions.keepAliveInterval);
     this.receivePinger = new Pinger(this, window, this.connectOptions.keepAliveInterval);
@@ -1135,11 +1137,11 @@ Paho.MQTT = (function (global) {
    * Called when the underlying websocket has received a complete packet.
    * @ignore
    */
-  ClientImpl.prototype._on_socket_message = function (event) {
-    this._trace("Client._on_socket_message", event.data);
+  ClientImpl.prototype._on_socket_message = function (data) {
+    this._trace("Client._on_socket_message", data);
     // Reset the receive ping timer, we now have evidence the server is alive.
     this.receivePinger.reset();
-    var messages = this._deframeMessages(event.data);
+    var messages = this._deframeMessages(data);
     for (var i = 0; i < messages.length; i+=1) {
         this._handleMessage(messages[i]);
     }
@@ -1356,7 +1358,7 @@ Paho.MQTT = (function (global) {
     }
     else this._trace("Client._socket_send", wireMessage);
 
-    this.socket.send(wireMessage.encode());
+    this.socket.emit('message', wireMessage.encode());
     /* We have proved to the server we are alive. */
     this.sendPinger.reset();
   };
@@ -1415,12 +1417,14 @@ Paho.MQTT = (function (global) {
 
     if (this.socket) {
       // Cancel all socket callbacks so that they cannot be driven again by this socket.
+      /*
       this.socket.onopen = null;
       this.socket.onmessage = null;
       this.socket.onerror = null;
       this.socket.onclose = null;
       if (this.socket.readyState === 1)
         this.socket.close();
+      */
       delete this.socket;
     }
 
@@ -1561,7 +1565,7 @@ Paho.MQTT = (function (global) {
           // port: clientId
           clientId = port;
           uri = host;
-          var match = uri.match(/^(wss?):\/\/((\[(.+)\])|([^\/]+?))(:(\d+))?(\/.*)$/);
+          var match = uri.match(/^(https?):\/\/((\[(.+)\])|([^\/]+?))(:(\d+))?(\/.*)$/);
           if (match) {
               host = match[4]||match[2];
               port = parseInt(match[7]);
@@ -1580,7 +1584,7 @@ Paho.MQTT = (function (global) {
         throw new Error(format(ERROR.INVALID_TYPE, [typeof path, "path"]));
 
       var ipv6AddSBracket = (host.indexOf(":") != -1 && host.slice(0,1) != "[" && host.slice(-1) != "]");
-      uri = "ws://"+(ipv6AddSBracket?"["+host+"]":host)+":"+port+path;
+      uri = "http://"+(ipv6AddSBracket?"["+host+"]":host)+":"+port+path;
     }
 
     var clientIdLength = 0;
@@ -1762,7 +1766,7 @@ Paho.MQTT = (function (global) {
             var port = connectOptions.ports[i];
 
             var ipv6 = (host.indexOf(":") != -1);
-            uri = "ws://"+(ipv6?"["+host+"]":host)+":"+port+path;
+            uri = "http://"+(ipv6?"["+host+"]":host)+":"+port+path;
             connectOptions.uris.push(uri);
           }
         } else {

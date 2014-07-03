@@ -16,7 +16,8 @@
       <div class="col-sm-12">
         <div class="jumbotron">
           <h1>MQTT.IO</h1>
-          <p>JUST IO THEM <span id="clientId"></span></p>
+          <p>JUST IO THEM from <span id="clientId"></span></p>
+          <p><button type="button" class="btn btn-primary btn-lg send" data-topic="/mqttio/#">/mqttio/#</button></p>
         </div>
       </div>
     </div>
@@ -37,14 +38,28 @@
 <script src="/socket.io/socket.io.js"></script>
 <script src="/js/mqttsio31.js"></script>
 <script>
-
-function port() {
-  var defaultPort = window.location.protocol === 'https:' ? 443 : 80;
-  return window.location.port === '' ? defaultPort : parseInt(window.location.port, 10);
-}
-
 $(function () {
   var lists = {};
+
+  function port() {
+    var defaultPort = window.location.protocol === 'https:' ? 443 : 80;
+    return window.location.port === '' ? defaultPort : parseInt(window.location.port, 10);
+  }
+
+  function findDestinations(destinationName) {
+    var pattern = destinationName.replace('#', '.*').replace('+', '[^/]*');
+    var regexp = new RegExp(pattern);
+    var dests = [];
+    Object.keys(lists).forEach(function (topic) {
+      console.log(pattern, topic);
+      if (regexp.test(topic)) {
+        console.log('match');
+        dests.push(lists[topic]);
+      }
+    });
+    return dests;
+  }
+
   $('.subscribe-list').each(function () {
     var el = $(this);
     var topic = el.data('topic');
@@ -61,14 +76,12 @@ $(function () {
       console.log(message);
       console.log("onMessageArrived", message.payloadString, message.destinationName);
       //client.disconnect();
-      var io = $('<li>');
-      var list = lists[message.destinationName];
-      if (list) {
-        io.text(message.payloadString);
+      var targets = findDestinations(message.destinationName);
+      targets.forEach(function (list) {
+        var io = $('<li>');
+        io.text(message.payloadString + ' ' + message.destinationName);
         list.prepend(io);
-      } else {
-
-      }
+      });
     };
 
     client.onMessageDelivered = function (wireMessage, payloadMessage) {

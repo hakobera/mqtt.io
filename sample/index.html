@@ -22,12 +22,12 @@
     </div>
     <div class="row">
       <div class="col-sm-6">
-        <button type="button" class="btn btn-default btn-lg btn-block send" data-topic="/mqttio/left">mqttio/left</button>
+        <button type="button" class="btn btn-default btn-lg btn-block send" data-topic="/mqttio/left">/mqttio/left</button>
         <ul class="subscribe-list" data-topic="/mqttio/left">
         </ul>
       </div>
       <div class="col-sm-6">
-        <button type="button" class="btn btn-default btn-lg btn-block send" data-topic="/mqttio/right">mqttio/left</button>
+        <button type="button" class="btn btn-default btn-lg btn-block send" data-topic="/mqttio/right">/mqttio/right</button>
         <ul class="subscribe-list" data-topic="/mqttio/right">
         </ul>
       </div>
@@ -37,6 +37,12 @@
 <script src="/socket.io/socket.io.js"></script>
 <script src="/js/mqttsio31.js"></script>
 <script>
+
+function port() {
+  var defaultPort = window.location.protocol === 'https:' ? 443 : 80;
+  return window.location.port === '' ? defaultPort : parseInt(window.location.port, 10);
+}
+
 $(function () {
   var lists = {};
   $('.subscribe-list').each(function () {
@@ -48,7 +54,7 @@ $(function () {
   var clientId = prompt("Enter your name", new Date().getTime());
   if (clientId) {
     $('#clientId').text(clientId);
-    var client = new Paho.MQTT.Client(window.location.hostname, 8080, clientId);
+    var client = new Paho.MQTT.Client(window.location.hostname, port(), clientId);
     client.startTrace();
 
     client.onMessageArrived = function (message) {

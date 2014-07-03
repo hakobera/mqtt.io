@@ -24,9 +24,7 @@ var moscaSettings = {
 };
 
 var attachServer = function (server, handler) {
-  var io = require('socket.io')(server, {
-    transports: ['polling']
-  });
+  var io = require('socket.io')(server);
   var room = io.of('/mqtt');
   room.on('connection', function (socket) {
     var stream = new SocketIOStream(socket);

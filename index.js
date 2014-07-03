@@ -1,35 +1,70 @@
-var sio = require('socket.io');
-var ss = require('socket.io-stream');
+var mosca = require('mosca');
 var mqtt = require('mqtt');
-var http = require('http');
-var https = require('https');
+var SocketIOStream = require('./lib/sioStream');
 
-module.exports.attachServer = function(server, handler) {
-  var io = sio(server);
+var ascoltatore = {
+  type: 'redis',
+  redis: require('redis'),
+  db: 12,
+  port: 6379,
+  return_buffers: true, // to handle binary payloads
+  host: "localhost"
+};
 
-  io.on('connection', function (socket) {
-    var stream = ss(socket);
-    var con = new mqtt.MqttConnection();
+var moscaSettings = {
+  port: 1883,
+  backend: ascoltatore,
+  persistence: {
+    factory: mosca.persistence.Redis
+  },
+  http: {
+    port: 8080,
+    static: __dirname + '/sample'
+  }
+};
 
-    stream.on('error', con.emit.bind(con, 'error'));
-    stream.on('close', con.emit.bind(con, 'close'));
+var attachServer = function (server, handler) {
+  var io = require('socket.io')(server, {
+    transports: ['polling']
+  });
+  var room = io.of('/mqtt');
+  room.on('connection', function (socket) {
+    var stream = new SocketIOStream(socket);
+    var connection = stream.pipe(mqtt.MqttConnection());
+
+    stream.on('error', connection.emit.bind(connection, 'error'));
+    stream.on('close', connection.emit.bind(connection, 'close'));
 
     if (handler) {
-      handler(con);
+      handler(connection);
     }
+
+    server.emit("client", connection);
   });
-
-  return io;
 };
 
-module.exports.createServer = function(handler) {
-  var server = http.createServer();
-  module.exports.attachServer(server, handler);
-  return server;
+mosca.Server.prototype.attachHttpServer = function(server) {
+  var that = this;
+  attachServer(server, function (conn) {
+    new mosca.Client(conn, that);
+  });
 };
 
-module.exports.createSecureServer = function(httpsOpts, handler) {
-    var server = https.createServer(httpsOpts);
-    module.exports.attachServer(server, handler);
-    return server;
-};
+var server = new mosca.Server(moscaSettings);
+server.on('ready', function () {
+  console.log('Mosca server is up and running');
+});
+
+server.on('clientConnected', function(client) {
+    console.log('client connected', client.id);
+});
+
+// fired when a message is received
+server.on('published', function(packet, client) {
+  console.log('Published', packet.payload);
+});
+
+//in case of an error
+process.on("uncaughtException", function(error) {
+  return console.log(error.stack);
+});

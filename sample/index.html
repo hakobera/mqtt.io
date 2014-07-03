@@ -1,36 +1,95 @@
 <!doctype html>
 <html>
 <head>
-  <script src="/socket.io/socket.io.js"></script>
-  <script src="/js/mqttws31.js"></script>
-  <script>
-  var client = new Paho.MQTT.Client('localhost', 8080, "clientId" + new Date().getTime());
-  client.startTrace();
-  client.onConnectionLost = onConnectionLost;
-  client.onMessageArrived = onMessageArrived;
-  client.connect({ onSuccess: onConnect });
+  <meta charset="utf8">
+  <title>MQTT.IO</title>
+  <link href="//maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap.min.css" rel="stylesheet">
+  <link href="//maxcdn.bootstrapcdn.com/font-awesome/4.1.0/css/font-awesome.min.css" rel="stylesheet">
+  <link href="//maxcdn.bootstrapcdn.com/bootswatch/3.2.0/cosmo/bootstrap.min.css" rel="stylesheet">
+  <style>
 
-  function onConnect() {
-    // Once a connection has been made, make a subscription and send a message.
-    console.log("onConnect");
-    client.subscribe("#");
-    message = new Paho.MQTT.Message("Hello");
-    message.destinationName = "/World";
-    client.send(message);
-  };
-
-  function onConnectionLost(responseObject) {
-    if (responseObject.errorCode !== 0)
-      console.log("onConnectionLost:"+responseObject.errorMessage);
-  };
-
-  function onMessageArrived(message) {
-    console.log(message);
-    console.log("onMessageArrived:"+message.payloadString);
-    //client.disconnect();
-  };
-  </script>
+  </style>
 </head>
 <body>
+  <div class="container">
+    <div class="row">
+      <div class="col-sm-12">
+        <div class="jumbotron">
+          <h1>MQTT.IO</h1>
+          <p>JUST IO THEM <span id="clientId"></span></p>
+        </div>
+      </div>
+    </div>
+    <div class="row">
+      <div class="col-sm-6">
+        <button type="button" class="btn btn-default btn-lg btn-block send" data-topic="/mqttio/left">mqttio/left</button>
+        <ul class="subscribe-list" data-topic="/mqttio/left">
+        </ul>
+      </div>
+      <div class="col-sm-6">
+        <button type="button" class="btn btn-default btn-lg btn-block send" data-topic="/mqttio/right">mqttio/left</button>
+        <ul class="subscribe-list" data-topic="/mqttio/right">
+        </ul>
+      </div>
+    </div>
+  </div>
+<script src="//code.jquery.com/jquery-1.11.0.min.js"></script>
+<script src="/socket.io/socket.io.js"></script>
+<script src="/js/mqttsio31.js"></script>
+<script>
+$(function () {
+  var lists = {};
+  $('.subscribe-list').each(function () {
+    var el = $(this);
+    var topic = el.data('topic');
+    lists[topic] = el;
+  });
+
+  var clientId = prompt("Enter your name", new Date().getTime());
+  if (clientId) {
+    $('#clientId').text(clientId);
+    var client = new Paho.MQTT.Client(window.location.hostname, 8080, clientId);
+    client.startTrace();
+
+    client.onMessageArrived = function (message) {
+      console.log(message);
+      console.log("onMessageArrived", message.payloadString, message.destinationName);
+      //client.disconnect();
+      var io = $('<li>');
+      var list = lists[message.destinationName];
+      if (list) {
+        io.text(message.payloadString);
+        list.prepend(io);
+      } else {
+
+      }
+    };
+
+    client.onMessageDelivered = function (wireMessage, payloadMessage) {
+      console.log('onMessageDelivered', wireMessage, payloadMessage);
+    };
+
+    client.onConnectionLost = function (resp) {
+      if (resp.errorCode !== 0) {
+        console.log("onConnectionLost:"+resp.errorMessage);
+      }
+    };
+
+    client.connect({
+      onSuccess: function () {
+        // Once a connection has been made, make a subscription and send a message.
+        console.log("onConnect");
+        client.subscribe("#");
+      }
+    });
+
+    $('.send').on('click', function () {
+      var message = new Paho.MQTT.Message('IO from ' + clientId);
+      message.destinationName = $(this).data('topic');
+      client.send(message);
+    });
+  }
+});
+</script>
 </body>
 </html>
